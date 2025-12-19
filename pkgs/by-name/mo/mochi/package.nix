@@ -1,65 +1,31 @@
 {
-  _7zz,
-  appimageTools,
+  lib,
+  callPackage,
+  stdenvNoCC,
   fetchurl,
   fetchzip,
-  lib,
-  stdenvNoCC,
-  xorg,
 }:
-
 let
+  inherit (stdenvNoCC.hostPlatform) isDarwin system;
+
+  sources = import ./sources.nix { inherit fetchurl fetchzip; };
+in
+callPackage (if isDarwin then ./darwin.nix else ./linux.nix) {
   pname = "mochi";
-  version = "1.18.11";
+  appName = "Mochi";
+  
+  inherit (sources.${system} or (throw "Unsupported system: ${system}")) version src;
 
-  linux = appimageTools.wrapType2 rec {
-    inherit pname version meta;
-
-    src = fetchurl {
-      url = "https://mochi.cards/releases/Mochi-${version}.AppImage";
-      hash = "sha256-NQ591KtWQz8hlXPhV83JEwGm+Au26PIop5KVzsyZKp4=";
-    };
-
-    appimageContents = appimageTools.extractType2 { inherit pname version src; };
-
-    extraPkgs = pkgs: [ xorg.libxshmfence ];
-
-    extraInstallCommands = ''
-      install -Dm444 ${appimageContents}/${pname}.desktop -t $out/share/applications/
-      install -Dm444 ${appimageContents}/${pname}.png -t $out/share/pixmaps/
-      substituteInPlace $out/share/applications/${pname}.desktop \
-        --replace-fail 'Exec=AppRun --no-sandbox' 'Exec=${pname}'
-    '';
-  };
-
-  darwin = stdenvNoCC.mkDerivation {
-    inherit pname version meta;
-
-    src = fetchzip {
-      url = "https://mochi.cards/releases/Mochi-${version}.dmg";
-      hash = "sha256-5RM4eqHQoYfO5JiUH9ol+3XxOk4VX4ocE3Yia82sovI=";
-      stripRoot = false;
-      nativeBuildInputs = [ _7zz ];
-    };
-
-    installPhase = ''
-      runHook preInstall
-
-      mkdir -p $out/Applications
-      cp -r *.app $out/Applications
-
-      runHook postInstall
-    '';
-  };
+  passthru.updateScript = ./update.sh;
 
   meta = {
     description = "Simple markdown-powered SRS app";
     homepage = "https://mochi.cards/";
-    changelog = "https://mochi.cards/changelog.html";
+    changelog = "https://mochi.cards/changelog";
+    mainProgram = "mochi";
     license = lib.licenses.unfree;
     sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
-    maintainers = with lib.maintainers; [ poopsicles ];
-    platforms = lib.platforms.linux ++ lib.platforms.darwin;
+    maintainers = with lib.maintainers; [ poopsicles milomc123 ];
+    platforms = [ "x86_64-linux" ] ++ lib.platforms.darwin;
   };
-in
-if stdenvNoCC.hostPlatform.isDarwin then darwin else linux
+}
