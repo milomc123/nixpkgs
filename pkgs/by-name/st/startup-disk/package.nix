@@ -7,16 +7,17 @@
   libadwaita,
   gtk4,
   glib,
+  polkit,
 }:
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "startup-disk";
-  version = "0.1.5";
+  version = "0.1.6";
 
   src = fetchFromGitLab {
     owner = "davide125";
     repo = "startup-disk";
     tag = finalAttrs.version;
-    hash = "sha256-258whEX6hKqfrk2aII15tuFEuB7NQUCNLEmi3OCOWV4=";
+    hash = "sha256-LbuuhINJ7L0iMwiMTBl0CwkKeTZ6iJbO1YutSc/1ZIg=";
     domain = "gitlab.gnome.org";
   };
 
@@ -29,15 +30,10 @@ rustPlatform.buildRustPackage (finalAttrs: {
     libadwaita
     gtk4
     glib
+    polkit
   ];
 
-  postPatch = ''
-    # Fix sudo crate's hardcoded /usr/bin/sudo
-    substituteInPlace $cargoDepsCopy/sudo-0.6.0/src/lib.rs \
-      --replace-fail 'Command::new("/usr/bin/sudo")' 'Command::new("sudo")'
-  '';
-
-  cargoHash = "sha256-Ec2u/F/lVdT5Oi8N116kVWtp7duZTU0d5zOhYungJ/U=";
+  cargoHash = "sha256-IIx0nvCBFT4Bokm/eduZPeZ6lQzGT1aKS/3c1D4PoEU=";
 
   postInstall = ''
     install -Dm644 res/org.startup_disk.StartupDisk.desktop -t $out/share/applications/
@@ -48,7 +44,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
 
   postFixup = ''
     substituteInPlace $out/share/polkit-1/actions/org.startup_disk.StartupDisk.policy \
-      --replace-fail /usr/bin/startup-disk /run/current-system/sw/bin/startup-disk
+      --replace-fail /usr/bin/startup-disk $out/bin/startup-disk
   '';
 
   passthru.updateScript = nix-update-script { };
